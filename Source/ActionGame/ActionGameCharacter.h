@@ -4,62 +4,73 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Abilities/GameplayAbility.h"
+#include "AbilitySystemInterface.h"
 #include "ActionGameCharacter.generated.h"
 
+class UAG_AbilitySystemComponentBase;
+class UAG_AttributeSetBase;
+class UGameplayEffect;
+class UGameplayAbility;
+
 UCLASS(config=Game)
-class AActionGameCharacter : public ACharacter
+class AActionGameCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
-	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
 
-	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
 public:
 	AActionGameCharacter();
 
-	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Input)
 	float TurnRateGamepad;
 
+	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
+	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
 protected:
-
-	/** Called for forwards/backward input */
 	void MoveForward(float Value);
-
-	/** Called for side to side input */
 	void MoveRight(float Value);
-
-	/** 
-	 * Called via input to turn at a given rate. 
-	 * @param Rate	This is a normalized rate, i.e. 1.0 means 100% of desired turn rate
-	 */
 	void TurnAtRate(float Rate);
-
-	/**
-	 * Called via input to turn look up/down at a given rate. 
-	 * @param Rate	This is a normalized rate, i.e. 1.0 means 100% of desired turn rate
-	 */
 	void LookUpAtRate(float Rate);
-
-	/** Handler for when a touch input begins. */
 	void TouchStarted(ETouchIndex::Type FingerIndex, FVector Location);
-
-	/** Handler for when a touch input stops. */
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
 
 protected:
-	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	// End of APawn interface
 
+/**
+*
+* Ability System
+*
+*/
 public:
-	/** Returns CameraBoom subobject **/
-	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
-	/** Returns FollowCamera subobject **/
-	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+	// 스스로에게 GameplayEffect 적용
+	bool ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect, FGameplayEffectContextHandle InEffectContext);
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+protected:
+	void InitializeAttributes();
+	void GiveAbilities();
+	void ApplyStartupEffects();
+
+	// 각각 클라이언트와 서버에서 위 함수를 이용해 초기화 해주기 위함
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_PlayerState() override;
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<UGameplayEffect> DefaultAttributeSet;
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "GAS")
+	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "GAS")
+	TArray<TSubclassOf<UGameplayEffect>> DefaultEffects;
+	UPROPERTY(EditDefaultsOnly)
+	UAG_AbilitySystemComponentBase* AbilitySystemComponent;
+	UPROPERTY(Transient)
+	UAG_AttributeSetBase* AttributeSet;
 };
 
