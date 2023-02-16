@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Abilities/GameplayAbility.h"
 #include "AbilitySystemInterface.h"
+#include "ActionGameTypes.h"
 #include "ActionGameCharacter.generated.h"
 
 class UAG_AbilitySystemComponentBase;
@@ -25,6 +26,8 @@ class AActionGameCharacter : public ACharacter, public IAbilitySystemInterface
 	class UCameraComponent* FollowCamera;
 public:
 	AActionGameCharacter();
+
+	virtual void PostInitializeComponents() override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Input)
 	float TurnRateGamepad;
@@ -54,23 +57,41 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 protected:
-	void InitializeAttributes();
 	void GiveAbilities();
 	void ApplyStartupEffects();
 
-	// 각각 클라이언트와 서버에서 위 함수를 이용해 초기화 해주기 위함
-	virtual void PossessedBy(AController* NewController) override;
-	virtual void OnRep_PlayerState() override;
+	// 클라이언트와 서버에서 위 함수를 이용해 초기화 해주기 위함
+	virtual void PossessedBy(AController* NewController) override; // 서버
+	virtual void OnRep_PlayerState() override; // 클라이언트
 
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<UGameplayEffect> DefaultAttributeSet;
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "GAS")
-	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "GAS")
-	TArray<TSubclassOf<UGameplayEffect>> DefaultEffects;
 	UPROPERTY(EditDefaultsOnly)
 	UAG_AbilitySystemComponentBase* AbilitySystemComponent;
 	UPROPERTY(Transient)
 	UAG_AttributeSetBase* AttributeSet;
+
+/**
+* 
+* Data Assets
+* 
+*/
+public:
+	UFUNCTION(BlueprintCallable)
+	FCharacterData GetCharacterData() const;
+	UFUNCTION(BlueprintCallable)
+	void SetCharacterData(const FCharacterData& InCharacterData);
+
+protected:
+	UPROPERTY(ReplicatedUsing = OnRep_CharacterData)
+	FCharacterData CharacterData;
+
+	UFUNCTION()
+	void OnRep_CharacterData();
+
+	virtual void InitFromCharacterData(const FCharacterData& InCharacterData, bool bFromReplication = false);
+
+	UPROPERTY(EditDefaultsOnly)
+	class UCharacterDataAsset* CharacterDataAsset;
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps);
 };
 

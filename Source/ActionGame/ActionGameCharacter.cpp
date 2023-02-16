@@ -13,6 +13,8 @@
 #include "AbilitySystem/Components/AG_AbilitySystemComponentBase.h"
 #include "AbilitySystem/AttributeSets/AG_AttributeSetBase.h"
 
+#include "DataAssets/CharacterDataAsset.h"
+#include "Net/UnrealNetwork.h"
 
 AActionGameCharacter::AActionGameCharacter()
 {
@@ -47,6 +49,15 @@ AActionGameCharacter::AActionGameCharacter()
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 	AttributeSet = CreateDefaultSubobject<UAG_AttributeSetBase>(TEXT("AttributeSet"));
+}
+
+void AActionGameCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	if (IsValid(CharacterDataAsset))
+	{
+		SetCharacterData(CharacterDataAsset->CharacterData);
+	}
 }
 
 void AActionGameCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
@@ -137,26 +148,12 @@ UAbilitySystemComponent* AActionGameCharacter::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
-// 초기 설정
-void AActionGameCharacter::InitializeAttributes()
-{
-	if (GetLocalRole() == ROLE_Authority && DefaultAttributeSet && AttributeSet)
-	{
-		// EffectContext를 만들어서 여러번 사용할 수 있도록 핸들러에 전달
-		FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
-		// EffectContext의 출처를 설정
-		EffectContext.AddSourceObject(this);
-
-		ApplyGameplayEffectToSelf(DefaultAttributeSet, EffectContext);
-	}
-}
-
 // 모든 Ability 세팅
 void AActionGameCharacter::GiveAbilities()
 {
 	if (HasAuthority() && AbilitySystemComponent)
 	{
-		for (auto DefaultAbility : DefaultAbilities)
+		for (auto DefaultAbility : CharacterData.Abilities)
 		{
 			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(DefaultAbility));
 		}
@@ -166,12 +163,12 @@ void AActionGameCharacter::GiveAbilities()
 // 모든 Effect 세팅
 void AActionGameCharacter::ApplyStartupEffects()
 {
-	if (GetLocalRole() == ROLE_Authority && DefaultAttributeSet && AttributeSet)
+	if (GetLocalRole() == ROLE_Authority)
 	{
 		FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
 		EffectContext.AddSourceObject(this);
 
-		for (auto CharacterEffect : DefaultEffects)
+		for (auto CharacterEffect : CharacterData.Effects)
 		{
 			ApplyGameplayEffectToSelf(CharacterEffect, EffectContext);
 		}
@@ -185,7 +182,6 @@ void AActionGameCharacter::PossessedBy(AController* NewController)
 
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 
-	InitializeAttributes();
 	GiveAbilities();
 	ApplyStartupEffects();
 }
@@ -195,8 +191,31 @@ void AActionGameCharacter::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+}
 
-	InitializeAttributes();
-	GiveAbilities();
-	ApplyStartupEffects();
+FCharacterData AActionGameCharacter::GetCharacterData() const
+{
+	return CharacterData;
+}
+
+void AActionGameCharacter::SetCharacterData(const FCharacterData& InCharacterData)
+{
+	CharacterData = InCharacterData;
+	InitFromCharacterData(CharacterData);
+}
+
+void AActionGameCharacter::OnRep_CharacterData()
+{
+	InitFromCharacterData(CharacterData, true);
+}
+
+void AActionGameCharacter::InitFromCharacterData(const FCharacterData& InCharacterData, bool bFromReplication)
+{
+}
+
+void AActionGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps)
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AActionGameCharacter, CharacterData);
 }
