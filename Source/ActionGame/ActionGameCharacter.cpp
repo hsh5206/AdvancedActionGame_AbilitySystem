@@ -12,11 +12,13 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystem/Components/AG_AbilitySystemComponentBase.h"
 #include "AbilitySystem/AttributeSets/AG_AttributeSetBase.h"
+#include "ActorComponents/AG_CharacterMovementComponent.h"
 
 #include "DataAssets/CharacterDataAsset.h"
 #include "Net/UnrealNetwork.h"
 
-AActionGameCharacter::AActionGameCharacter()
+AActionGameCharacter::AActionGameCharacter(const FObjectInitializer& ObjectInitializer) : 
+	Super(ObjectInitializer.SetDefaultSubobjectClass<UAG_CharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
@@ -44,7 +46,11 @@ AActionGameCharacter::AActionGameCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 
-	/** Ability System */
+	/** 
+	* 
+	* Ability System
+	*
+	*/
 	AbilitySystemComponent = CreateDefaultSubobject<UAG_AbilitySystemComponentBase>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);

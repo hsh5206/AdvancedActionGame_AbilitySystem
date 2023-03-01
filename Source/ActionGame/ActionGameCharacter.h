@@ -25,7 +25,7 @@ class AActionGameCharacter : public ACharacter, public IAbilitySystemInterface
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
 public:
-	AActionGameCharacter();
+	AActionGameCharacter(const FObjectInitializer& ObjectInitializer);
 
 	virtual void PostInitializeComponents() override;
 
@@ -60,7 +60,7 @@ protected:
 	void GiveAbilities();
 	void ApplyStartupEffects();
 
-	// 클라이언트와 서버에서 위 함수를 이용해 초기화 해주기 위함
+	// 클라이언트와 서버에서의 초기화를 위함
 	virtual void PossessedBy(AController* NewController) override; // 서버
 	virtual void OnRep_PlayerState() override; // 클라이언트
 
